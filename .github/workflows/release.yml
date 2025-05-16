@@ -1,12 +1,18 @@
 name: Create and publish a Docker image
 
 on:
+  # allow manual trigger
   workflow_dispatch:
+
+  # run every day to keep the image up to date
+  schedule:
+    - cron: '30 5,17 * * *'
+
+  # run on change in main and releases branches
   push:
     branches:
       - main
       - 'releases/**'
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -33,18 +39,24 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Extract caddy version from Dockerfile
+        id: caddy_tag
+        run: |
+          grep CADDY_VERSION= Dockerfile | cut -d" " -f2 >> $GITHUB_OUTPUT
+
       - name: Build and push Docker image
         id: push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: false
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: "${{ steps.meta.outputs.tags }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}:${{ steps.caddy_tag.outputs.CADDY_VERSION }}"
           labels: ${{ steps.meta.outputs.labels }}
 ######
-#      - name: Generate artifact attestation
-#        uses: actions/attest-build-provenance@v2
-#        with:
-#          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
-#          subject-digest: ${{ steps.push.outputs.digest }}
-#          push-to-registry: true
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
