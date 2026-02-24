@@ -1,5 +1,5 @@
 # renovate: datasource=docker depName=caddy versioning=docker
-ARG CADDY_VERSION=2.10.2
+ARG CADDY_VERSION=2.11.1
 FROM caddy:${CADDY_VERSION}-builder AS builder
 
 RUN xcaddy build \
